@@ -20,34 +20,34 @@
 //////////////////////////// 80 columns wide //////////////////////////////////
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Random;
+
 
 /**
  * This class implements a Markov model for use as in a nonsense text generator.
  * Each state in the model represents a single word in the input document.
  */
 public class MarkovModelEC {
-	int id = 0;
-	StateContainer stateContainer = new StateContainer();
-	Random rng = new Random();
+	private int id = 0;
+	private StateContainer stateContainer = new StateContainer();
+	//For calculate the frequency of the word in the raw text
+	private String copyText = "";
+	private final double ERROR = 1E-14;
+	private String[] copySplittedText;
 	/**
 	 * A two dimensional array list of lists of next words of the current word.
 	 */
-	ArrayList<ArrayList<String>> stateNextWords = new 
+	private ArrayList<ArrayList<String>> stateNextWords = new 
 												ArrayList<ArrayList<String>>();
 
 	/**
 	 * A list of states that are in the state container.
 	 */
-	ArrayList<State> statesList = stateContainer.getStates();
+	private ArrayList<State> statesList = stateContainer.getStates();
+
 
 	/**
-	 * A list of states that precede the current state.
-	 */
-	ArrayList<State> nextStates = new ArrayList<State>();
-
-	/**
-	 * The constructor accepts an array of words representing the input text. <br>
+	 * The constructor accepts an array of words representing the input text. 
+	 * <br>
 	 * For example, if the original text read "Sam I am, that Sam I am", the
 	 * array of words would store: <br>
 	 * <br>
@@ -68,7 +68,7 @@ public class MarkovModelEC {
 		// Traversing through the words list and check if the word has
 		// associated with a state of not. If not, create a new state for the
 		// word and set an id for the new state.
-		
+		copySplittedText = words;
 		for (int i = 0; i < words.length; i++) {
 			if (stateContainer.containsWord(words[i]) == false) {
 				State createdState = new State();
@@ -93,6 +93,7 @@ public class MarkovModelEC {
 		// then increment the transition of that next state.
 		
 		String joinedWords = join(words, " ");
+		copyText = joinedWords;
 		for (int k = 0; k < stateNextWords.size(); k++) {
 			for (int g = 0; g < stateNextWords.get(k).size(); g++) {
 				
@@ -172,11 +173,17 @@ public class MarkovModelEC {
 	 */
 	@Override
 	public String toString() {
+		//A String to hold of the String diagram.
 		String toString = "";
+		//A String to hold the state's word.
 		String state = "";
+		//A String to hold the state's transitions.
 		String listOfTransition = "";
 		for (int i = 0; i < statesList.size(); i++) {
+			//The state's word.
 			state = "[" + statesList.get(i).getWord() + "]\n";
+			//If it's the first word to print out, print out the state only. 
+			//else go to the next line and print out the state.
 			if (i == 0) {
 				toString = toString + state;
 			} else {
@@ -184,12 +191,15 @@ public class MarkovModelEC {
 			}
 			for (int j = 0; j < statesList.get(i).getTransitions().size(); j++) 
 			{
+				//Get the count from a specific transition.
 				int count = statesList.get(i).getTransitions().get(j)
 						.getCount();
+				//Get the next state's word.
 				String nextWord = stateContainer.getStateById(
 						statesList.get(i).getTransitions().get(j)
 								.getDestinationId()).getWord();
 				listOfTransition = count + " -->" + " [" + nextWord + "]\n";
+				//Add all of the states and transitions up.
 				toString = toString + listOfTransition;
 			}
 		}
@@ -217,30 +227,32 @@ public class MarkovModelEC {
 	 */
 	public String generateText(int numWords) {
 		id = 0;
+		//A String to hold the generated text.
 		String generatedText = "";
 		for (int i = 0; i < numWords; i++)
 		{
+			//Only print out 10 elements a line. 
 			if (i % 10 == 0 && i != 0)
 			{
 				generatedText += "\n";
 			}
+			//If it's the final word, print the word without a space.
 			if (i == numWords - 1)
 			{
 				generatedText += stateContainer.getStateById(id).getWord();
 			}
+			//Else print the word followed with a space.
 			else
 			{
 				generatedText += stateContainer.getStateById(id).getWord() +
 											" ";
 			}
-			
+			//Update the id of the next state.
 			id = moveToNextState(stateContainer.getStateById(id));
 		}
-		// HINT: In order to meet the requirement of printing a new line after
-		// every 10 words, you must append the newline character, "\n",
-		// to the resulting string after appending each set of 10 words.
 		return generatedText;
 	}
+
 
 	/**
 	 * This method accepts a State object that represents the "current" state
@@ -261,62 +273,20 @@ public class MarkovModelEC {
 	 * @return the ID of the next state we should move to
 	 */
 	public int moveToNextState(State currState) {
-		double[] listOfProb = new double[currState.getTransitions().size()];
-		double[] listOfProbSorted = new double[currState.getTransitions().size()];
-		int sum = 0;
-		int nextStateId = 0;
-		double probability = 0;
-		double nextStateProb = 0;
-		double rand = 0;
-		int count = 0;
-		for (int i = 0; i < currState.getTransitions().size(); i++) {
-			sum += currState.getTransitions().get(i).getCount();
-		}
-		for (int k = 0; k < currState.getTransitions().size(); k++)
-		{
-			probability = ((currState.getTransitions().get(k).getCount())/(sum * 1.0));
-			listOfProb[k] = probability;
-		}
-		
-		for (int j = 0; j < listOfProb.length; j++)
-		{
-			listOfProbSorted[j] = listOfProb[j];
- 		}
-		Arrays.sort(listOfProbSorted);
-		while (nextStateProb == 0) {
-			rand = rng.nextDouble();
-			for (int g = 0; g < listOfProbSorted.length; g++)
-			{
-				if (rand < listOfProbSorted[g])
-				{
-					nextStateProb = listOfProbSorted[g];
-				}
+		ArrayList<Transition> transitions = currState.getTransitions();
+		ArrayList<Integer> statesIDAll = new ArrayList<Integer>();
+		for (int i = 0; i < transitions.size(); i++) {
+			for (int j = 0; j < transitions.get(i).getCount(); j++) {
+				statesIDAll.add(transitions.get(i).getDestinationId());
 			}
 		}
-		
-		for (int a = 0; a < listOfProb.length; a++)
-		{
-			if (listOfProb[a] >= nextStateProb - 0.001 || listOfProb[a] <= nextStateProb + 0.001)
-			{
-				count++;
-			}
-		}
-		
-		State[] states = new State[count];
-		int o = 0;
-			for (int u = 0; u < currState.getTransitions().size(); u++)
-			{
-				if ((nextStateProb * sum) <= currState.getTransitions().get(u).getCount() + 0.001 ||
-					(nextStateProb * sum) >= currState.getTransitions().get(u).getCount() - 0.001)
-				{
-					states[o] = stateContainer.getStateById(currState.getTransitions().get(u).getDestinationId());
-					o++;
-				}
-			}
-		int x = rng.nextInt(count);
-		nextStateId = states[x].getId();
-		return nextStateId;
+
+		int rand = 0;
+		rand = Utility.RNG.nextInt(statesIDAll.size());
+		// System.out.println(rand);
+		return statesIDAll.get(rand);
 	}
+
 	
 	/** Calculate the average degree the states in the Markov model. 
 	 *  A state's degree is defined as the number of transitions that move from 
@@ -353,8 +323,19 @@ public class MarkovModelEC {
 		int f = 0;
 		for (int i = 0; i < statesList.size(); i ++)
 		{
+			f += countWords(" " + statesList.get(i).getWord() + " ", copyText);
+			if (statesList.get(i).getWord().equals(copySplittedText[0]))
+			{
+				f++;
+			}
+			if (statesList.get(i).getWord().
+					equals(copySplittedText[copySplittedText.length - 1]))
+			{
+				f++;
+			}
 		}
-		return 0;
+		avgF = f/(statesList.size() * 1.0);
+		return avgF;
 	}
 	
 	/** This method calculates the mode of the degrees of states in this model. 
@@ -394,7 +375,39 @@ public class MarkovModelEC {
 	
 	public ArrayList<Integer> calculateDegreeModes()
 	{
+		int count = 0;
+		int tempCount = 0;
+		ArrayList<Integer> degreesList = new ArrayList<Integer>();
 		ArrayList<Integer> degreeModes = new ArrayList<Integer>();
+		ArrayList<Integer> degreesListUnique = new ArrayList<Integer>();
+		for (int i = 0; i < statesList.size(); i++)
+		{
+			degreesList.add(statesList.get(i).getTransitions().size());
+		}
+		
+		for (int j = 0; j < degreesList.size(); j++)
+		{
+			count = countNumber(degreesList.get(j), degreesList);
+			if (count >= tempCount)
+			{
+				tempCount = count;
+			}
+		}
+		
+		for (int o = 0; o < degreesList.size();o++)
+		{
+			if (countNumber(degreesList.get(o), degreesList) != 0)
+			{
+				degreesListUnique.add(degreesList.get(o));
+			}
+		}
+		for (int k = 0 ; k < degreesListUnique.size(); k++)
+		{
+			if (tempCount == countNumber(degreesListUnique.get(k), degreesList))
+			{
+				degreeModes.add(degreesList.get(k));
+			}
+		}
 		return degreeModes;
 	}
 	
@@ -407,7 +420,26 @@ public class MarkovModelEC {
 	
 	public ArrayList<String> getWordsOfFrequency(int frequency)
 	{
+		double fcount = 0;
 		ArrayList<String> words = new ArrayList<String>();
+		for (int i = 0; i < statesList.size(); i ++)
+		{
+			fcount = countWords(" " + statesList.get(i).getWord() + " ", 
+					copyText);
+			if (statesList.get(i).getWord().equals(copySplittedText[0]))
+			{
+				fcount++;
+			}
+			if (statesList.get(i).getWord().
+					equals(copySplittedText[copySplittedText.length - 1]))
+			{
+				fcount++;
+			}
+			if (fcount == frequency)
+			{
+				words.add(statesList.get(i).getWord());
+			}
+		}
 		return words;
 	}
 	
@@ -421,7 +453,13 @@ public class MarkovModelEC {
 	public ArrayList<State> getStatesOfDegree(int degree)
 	{
 		ArrayList<State> statesOfDegree = new ArrayList<State>();
-		
+		for (int i = 0; i < statesList.size(); i++)
+		{
+			if (statesList.get(i).getTransitions().size() == degree)
+			{
+				statesOfDegree.add(statesList.get(i));
+			}
+		}
 		return statesOfDegree;
 	}
 
@@ -431,7 +469,8 @@ public class MarkovModelEC {
 	 * and the array list of states to find the matching word. The word that
 	 * preceding the specified word then will be checked if they have been
 	 * included or not; if not that word will be added to the array list
-	 * nextWords. This method also solve the problem for the <b>LAST WORD</b>. <br>
+	 * nextWords. This method also solve the problem for the <b>LAST WORD</b>.
+	 *  <br>
 	 * Example: <br>
 	 * A String[] words = {"I", "am", "Sam,", "not", "Math.", "I", "am",
 	 * "dead."} <br>
@@ -473,7 +512,27 @@ public class MarkovModelEC {
 		}
 		return nextWords;
 	}
-
+	
+	/** Count the occurrences of a number in an integer array list.
+	 * 
+	 * @param number
+	 * @param list
+	 * @return
+	 */
+	
+	private int countNumber(int number, ArrayList<Integer> list)
+	{
+		int count = 0;
+		for (int i = 0; i < list.size(); i++)
+		{
+			if (number == list.get(i))
+			{
+				count++;
+			}
+		}
+		return count;
+	}
+	
 	/**
 	 * This method return true if a specified word is found in the the list
 	 * 
@@ -490,51 +549,6 @@ public class MarkovModelEC {
 		return false;
 	}
 
-	/**
-	 * This method traverses through a two dimensional array list of string. It
-	 * also traverses through another string array list. This method checks if
-	 * the array list provided has the same elements as the sub array list in
-	 * the two dimensional array list or not. <br>
-	 * Example: two dimensional array = {{"name", "I"}, {"he"}} provided array
-	 * list = {"he"} This example will return false;
-	 * 
-	 * @param arrayList
-	 * @param twoDarrayList
-	 * @return true if the array list provided is different from the sub array
-	 *         lists in the 2D array.
-	 */
-
-	private boolean differentElements(ArrayList<String> arrayList,
-			ArrayList<ArrayList<String>> twoDarrayList) {
-		for (int i = 0; i < twoDarrayList.size(); i++) {
-			if (arrayList.size() != twoDarrayList.get(i).size()) {
-				return false;
-			} else {
-				for (int j = 0; j < arrayList.size(); j++) {
-					if (arrayList.get(j).equals(twoDarrayList.get(i).get(j))) {
-						return false;
-					}
-				}
-			}
-		}
-		return true;
-	}
-
-	/**
-	 * This method return true if a specified word is found in the the list
-	 * 
-	 * @param word
-	 * @param list
-	 * @return true if the word is found and false otherwise.
-	 */
-	private boolean findWord2(String word, String[] words) {
-		for (int i = 0; i < words.length; i++) {
-			if (word.equals(words[i])) {
-				return true;
-			}
-		}
-		return false;
-	}
 
 	/** This method joint a provided array of strings into String using 
 	 * a given delimiter.
@@ -554,8 +568,8 @@ public class MarkovModelEC {
 	}
 
 	/**
-	 * This method counts and returns the number of specified word in an array
-	 * of string.
+	 * This method counts and returns the number of specified word in a
+	 * string.
 	 * 
 	 * @param word
 	 * @param words
@@ -563,7 +577,7 @@ public class MarkovModelEC {
 	 */
 	private static int countWords(String word, String words) {
 		int count = 0;
-		for (int i = 0; i < words.length() - word.length() + 1; i++) {
+		for (int i = 0; i < words.length() - word.length(); i++) {
 			if (word.equals(words.substring(i, i + word.length()))) {
 				count++;
 			}
