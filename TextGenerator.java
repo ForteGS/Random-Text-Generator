@@ -59,7 +59,7 @@ public class TextGenerator
 	public static String runMarkovTextGeneration(String rawText)
 	{
 		String[] processedText = Utility.splitWords(rawText);
-		MarkovModel MarkovModel = new MarkovModel(processedText);
+		MarkovModelEC MarkovModel = new MarkovModelEC(processedText);
 		System.out.println(MarkovModel);
 		return MarkovModel.generateText(GENERATION_LENGTH);
 	}
